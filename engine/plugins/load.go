@@ -51,6 +51,7 @@ var pluginNewFuncs = []func() et.Plugin{
 	gleif.NewGLEIF,
 	horizontals.NewHorizontals,
 	hp.NewHTTPProbing,
+	hp.NewOnionLocation,
 	rdap.NewRDAP,
 	scrape.NewBing,
 	scrape.NewDNSHistory,
