@@ -114,18 +114,24 @@ func (ol *onionLocation) lookup(e *et.Event, service *dbt.Entity, urlAddr string
 	var findings []*support.Finding
 
 	if edges, err := e.Session.Cache().OutgoingEdges(service, since, "onion_location"); err == nil && len(edges) > 0 {
-		for _, edge := range edges {
-			if _, err := e.Session.Cache().GetEdgeTags(edge, since, ol.source.Name); err != nil {
-				continue
-			}
-			if edge.Relation.Key() == "onion_location" {
-				if urlEntity, err := e.Session.Cache().FindEntityById(edge.ToEntity.ID); err == nil && urlEntity != nil && urlEntity.Asset.AssetType() == oam.URL {
-					if urlAsset := urlEntity.Asset.(*oamurl.URL); urlAsset.Address == urlAddr {
-						findings = append(findings, &support.Finding{
-							From:     service,
-							FromName: service.Asset.Key(),
-							To:       urlEntity,
-							ToName:   urlAsset.Address,
+		for _, edge := range edges {		if _, err := e.Session.Cache().GetEdgeTags(edge, since, ol.source.Name); err != nil {
+			continue
+		}
+		
+		// Check if this is an onion_location relation
+		var relationName string
+		if simpleRel, ok := edge.Relation.(*general.SimpleRelation); ok {
+			relationName = simpleRel.Name
+		}
+		
+		if relationName == "onion_location" {
+			if urlEntity, err := e.Session.Cache().FindEntityById(edge.ToEntity.ID); err == nil && urlEntity != nil && urlEntity.Asset.AssetType() == oam.URL {
+				if urlAsset := urlEntity.Asset.(*oamurl.URL); urlAsset.Raw == urlAddr {
+					findings = append(findings, &support.Finding{
+						From:     service,
+						FromName: service.Asset.Key(),
+						To:       urlEntity,
+						ToName:   urlAsset.Raw,
 							Rel:      edge.Relation,
 						})
 					}
@@ -141,7 +147,7 @@ func (ol *onionLocation) query(e *et.Event, service *dbt.Entity, urlAddr string)
 
 	// Create OAM URL asset for the onion location
 	urlAsset := &oamurl.URL{
-		Address: urlAddr,
+		Raw: urlAddr,
 	}
 
 	urlEntity, err := e.Session.Cache().CreateAsset(urlAsset)
@@ -169,12 +175,29 @@ func (ol *onionLocation) process(e *et.Event, findings []*support.Finding) {
 
 // isHTTPService checks if the service is an HTTP or HTTPS service
 func (ol *onionLocation) isHTTPService(service *platform.Service) bool {
-	if service.Protocol == nil {
+	// Services don't have a direct protocol field. We need to check if this service
+	// has HTTP-related attributes or if it was created via HTTP probing.
+	// For now, we'll check if it has attributes that look like HTTP headers.
+	if service.Attributes == nil {
 		return false
 	}
 
-	protocol := strings.ToLower(*service.Protocol)
-	return protocol == "http" || protocol == "https"
+	// Check for common HTTP headers to identify HTTP services
+	httpHeaders := []string{"Content-Type", "Server", "Location", "Set-Cookie", "Content-Length"}
+	for _, header := range httpHeaders {
+		if _, exists := service.Attributes[header]; exists {
+			return true
+		}
+	}
+	
+	// Also check for Onion-Location header directly
+	for key := range service.Attributes {
+		if strings.EqualFold(key, "Onion-Location") {
+			return true
+		}
+	}
+
+	return false
 }
 
 // extractOnionLocationHeader extracts the Onion-Location header value from service attributes
