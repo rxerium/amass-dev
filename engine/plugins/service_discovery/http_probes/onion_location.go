@@ -72,20 +72,27 @@ func (ol *onionLocation) check(e *et.Event) error {
 
 	// Only process HTTP/HTTPS services
 	if !ol.isHTTPService(service) {
+		ol.log.Info("Skipping non-HTTP service", "service_id", service.ID)
 		return nil
 	}
 
 	// Extract Onion-Location header from service attributes
 	onionLocation := ol.extractOnionLocationHeader(service)
 	if onionLocation == "" {
+		ol.log.Info("No Onion-Location header found", "service_id", service.ID)
 		return nil
 	}
+
+	ol.log.Info("Found Onion-Location header", "service_id", service.ID, "onion_url", onionLocation)
 
 	// Validate and normalize the onion location URL
 	normalizedURL, err := ol.normalizeOnionURL(onionLocation)
 	if err != nil || normalizedURL == "" {
+		ol.log.Info("Invalid onion URL, skipping", "service_id", service.ID, "url", onionLocation, "error", err)
 		return nil // Skip invalid URLs
 	}
+
+	ol.log.Info("Processing valid onion location", "service_id", service.ID, "normalized_url", normalizedURL)
 
 	since, err := support.TTLStartTime(e.Session.Config(), string(oam.Service), string(oam.URL), ol.name)
 	if err != nil {
@@ -170,6 +177,7 @@ func (ol *onionLocation) query(e *et.Event, service *dbt.Entity, urlAddr string)
 }
 
 func (ol *onionLocation) process(e *et.Event, findings []*support.Finding) {
+	ol.log.Info("Processing onion location findings", "count", len(findings))
 	support.ProcessAssetsWithSource(e, findings, ol.source, ol.name, ol.name)
 }
 
