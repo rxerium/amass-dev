@@ -269,7 +269,28 @@ func (h *Handler) TrackChanges(ctx context.Context, input types.TrackChangesInpu
 // QueryAssociations queries asset associations
 func (h *Handler) QueryAssociations(ctx context.Context, input types.QueryAssociationsInput) ([]types.AssociationResult, error) {
 	log.Printf("[Tools] Querying associations for %s\n", input.Domain)
-	return h.cliWrapper.QueryAssociations(ctx, input)
+
+	// Use GetRelationships internally since it queries the database directly
+	relationships, err := h.GetRelationships(ctx, input.Domain)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to AssociationResult format
+	results := []types.AssociationResult{}
+	for _, rel := range relationships {
+		fromAsset, _ := rel["from_asset"].(string)
+		edgeType, _ := rel["edge_type"].(string)
+		toAsset, _ := rel["to_asset"].(string)
+
+		results = append(results, types.AssociationResult{
+			Subject:   fromAsset,
+			Predicate: edgeType,
+			Object:    toAsset,
+		})
+	}
+
+	return results, nil
 }
 
 // GenerateVisualization generates a network visualization
@@ -561,7 +582,10 @@ func (h *Handler) GetDomainInfo(ctx context.Context, domain string) (map[string]
 
 	line := strings.TrimSpace(string(output))
 	if line == "" || !strings.HasPrefix(line, "{") {
-		return nil, fmt.Errorf("no domain record found for %s", domain)
+		log.Printf("[Tools] No domain record found for %s\n", domain)
+		return map[string]interface{}{
+			"message": fmt.Sprintf("No domain record found for %s. Run an enumeration first.", domain),
+		}, nil
 	}
 
 	var data map[string]interface{}
