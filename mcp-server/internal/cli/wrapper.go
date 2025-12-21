@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/owasp-amass/amass/mcp-server/internal/types"
@@ -48,7 +50,20 @@ func (w *Wrapper) executeCommand(ctx context.Context, args ...string) (string, e
 func (w *Wrapper) ListSubdomains(ctx context.Context, input types.ListSubdomainsInput) ([]types.SubdomainResult, error) {
 	log.Printf("[CLI] Listing subdomains for %s\n", input.Domain)
 
-	args := []string{"subs", "-d", input.Domain}
+	// Use the same database directory as enumeration
+	dbDir := getAmassDBDir()
+
+	// Try to read from the output file first
+	outputFile := filepath.Join(dbDir, fmt.Sprintf("results-%s.txt", input.Domain))
+	if data, err := os.ReadFile(outputFile); err == nil && len(data) > 0 {
+		log.Printf("[CLI] Reading results from output file: %s\n", outputFile)
+		output := string(data)
+		return w.parseSubdomainsOutput(output, false), nil // IP lookups would need separate resolution
+	}
+
+	// Fallback to subs command if output file doesn't exist
+	log.Printf("[CLI] Output file not found, trying subs command\n")
+	args := []string{"subs", "-d", input.Domain, "-dir", dbDir}
 
 	if input.ShowIPs {
 		args = append(args, "-ip")
@@ -64,6 +79,13 @@ func (w *Wrapper) ListSubdomains(ctx context.Context, input types.ListSubdomains
 	}
 
 	return w.parseSubdomainsOutput(output, input.ShowIPs || input.ShowIPv4Only || input.ShowIPv6Only), nil
+}
+
+// getAmassDBDir returns the consistent database directory for amass operations
+func getAmassDBDir() string {
+	dbDir := filepath.Join(os.TempDir(), "amass-mcp-db")
+	os.MkdirAll(dbDir, 0755)
+	return dbDir
 }
 
 // TrackChanges tracks changes in discovered assets

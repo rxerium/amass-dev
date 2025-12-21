@@ -104,6 +104,7 @@ type EnumerateDomainInput struct {
 // ListSubdomainsInput contains parameters for listing subdomains
 type ListSubdomainsInput struct {
 	Domain        string `json:"domain"`
+	SessionToken  string `json:"session_token,omitempty"`
 	ShowIPs       bool   `json:"show_ips,omitempty"`
 	ShowIPv4Only  bool   `json:"show_ipv4_only,omitempty"`
 	ShowIPv6Only  bool   `json:"show_ipv6_only,omitempty"`

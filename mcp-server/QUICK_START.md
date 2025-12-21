@@ -1,122 +1,174 @@
-# Amass MCP Server - Quick Start
+# Amass MCP Server - Quick Start Guide
 
-## ✅ Your Server is Ready!
+## 🚀 Get Started in 3 Steps
 
-Location: `/Users/rxerium/Documents/amass-dev/mcp-server/amass-mcp-server`
-Size: 8.6MB
-Status: ✅ Tested and working
+### Step 1: Restart Claude Desktop
+The MCP server has been updated with 7 new tools. Restart Claude to load them:
 
-## 🎯 3 Ways to Use It
+1. **Quit Claude Desktop completely** (⌘ + Q on Mac)
+2. **Reopen Claude Desktop**
+3. The updated MCP server loads automatically
 
-### 1️⃣  Use with Claude Desktop (Recommended)
-
-**Setup (one-time):**
+### Step 2: Verify Services Running
+Ensure Docker Compose services are up:
 
 ```bash
-# Edit Claude Desktop config
-nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
+cd /Users/rxerium/Documents/amass-docker-compose
+docker-compose ps
 ```
 
-**Add this:**
-```json
-{
-  "mcpServers": {
-    "amass": {
-      "command": "/Users/rxerium/Documents/amass-dev/mcp-server/amass-mcp-server"
-    }
-  }
-}
+**Required containers:**
+- ✅ assetdb (PostgreSQL)
+- ✅ neo4j (Graph database)
+- ✅ engine (GraphQL API)
+- ✅ syslog
+
+If not running:
+```bash
+docker-compose up -d
 ```
 
-**Restart Claude Desktop**, then use these commands:
+### Step 3: Test in Claude Desktop
 
+Try these commands in order:
+
+#### 1️⃣ Basic Enumeration
 ```
-Check the Amass engine status
+Enumerate subdomains for rxerium.com
+```
 
-Enumerate subdomains for example.com
+#### 2️⃣ Check Status
+```
+What's the scan status?
+```
 
-List all subdomains for owasp.org with IPs
+#### 3️⃣ List Results (wait 5 minutes first)
+```
+List all subdomains for rxerium.com
+```
+
+#### 4️⃣ Try New Features
+```
+What data sources are available?
+Show me the Amass configuration
+Query associations for rxerium.com
+Generate a D3 visualization for rxerium.com
 ```
 
 ---
 
-### 2️⃣  Test Manually (CLI)
+## 🎯 What You Can Ask Claude
 
-**Check engine status:**
-```bash
-cd /Users/rxerium/Documents/amass-dev/mcp-server
+### Discovery
+- "Enumerate subdomains for example.com"
+- "Find all subdomains of hackthebox.com"
+- "Run a passive scan on target.com"
 
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"amass_engine_status","arguments":{}}}' | ./amass-mcp-server
+### Monitoring
+- "What's the scan status?"
+- "Is the Amass engine running?"
+- "Show me all active scans"
+
+### Analysis
+- "What assets are associated with example.com?"
+- "Track changes for example.com in the last 24 hours"
+- "Generate a network visualization"
+
+### Configuration
+- "Show me the configuration"
+- "List available data sources"
+- "Add my SecurityTrails API key: [key]"
+
+---
+
+## 📚 Documentation
+
+- **AMASS_TOOLS_REFERENCE.md** - Complete tool reference (all 11 tools)
+- **TESTING_GUIDE.md** - Comprehensive testing guide
+- **IMPLEMENTATION_SUMMARY.md** - Technical implementation details
+
+---
+
+## ⚡ Quick Test Script
+
+Run these in sequence to test all features:
+
 ```
-
-**List subdomains:**
-```bash
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"amass_list_subdomains","arguments":{"domain":"example.com","show_ips":true}}}' | ./amass-mcp-server
-```
-
-**Start enumeration:**
-```bash
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"amass_enumerate_domain","arguments":{"domain":"example.com"}}}' | ./amass-mcp-server
+1. Enumerate subdomains for test.com
+2. Check scan status
+3. Show engine status
+4. List data sources
+5. Get configuration
+6. List subdomains for test.com (after 5 min)
+7. Query associations for test.com
+8. Generate D3 visualization for test.com
+9. Track changes for test.com in last 24h
 ```
 
 ---
 
-### 3️⃣  Run with MCP Inspector (Debug)
+## 🛠️ Troubleshooting
 
+### Issue: Claude says "unknown tool"
+**Fix:** Restart Claude Desktop (must quit completely, not just close window)
+
+### Issue: "No data found"
+**Fix:**
+- For subdomains: Wait for enumeration to complete (~5 min)
+- For associations: Ensure Neo4j has data
+- For changes: Requires multiple scans over time
+
+### Issue: Docker services not running
+**Fix:**
 ```bash
-# Install MCP Inspector
-npm install -g @modelcontextprotocol/inspector
-
-# Run
-mcp-inspector /Users/rxerium/Documents/amass-dev/mcp-server/amass-mcp-server
+cd /Users/rxerium/Documents/amass-docker-compose
+docker-compose down
+docker-compose up -d
+docker-compose ps  # Verify all running
 ```
-
-## 🔧 Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `amass_enumerate_domain` | Start subdomain enumeration |
-| `amass_list_subdomains` | List discovered subdomains |
-| `amass_engine_status` | Check if engine is running |
-
-## 📝 Example Workflow
-
-### Discover subdomains for a target:
-
-1. **Start enumeration** (takes a few minutes):
-```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"amass_enumerate_domain","arguments":{"domain":"owasp.org"}}}' | ./amass-mcp-server
-```
-
-2. **Wait for completion** (watch the logs)
-
-3. **List results**:
-```bash
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"amass_list_subdomains","arguments":{"domain":"owasp.org","show_ips":true}}}' | ./amass-mcp-server
-```
-
-## 🐛 Troubleshooting
-
-**Amass not found?**
-```bash
-export AMASS_PATH=/Users/rxerium/go/bin/amass
-./amass-mcp-server
-```
-
-**No data returned?**
-```bash
-# Run Amass directly first to populate the database
-amass enum -d example.com
-
-# Then query via MCP
-```
-
-## 📚 Full Documentation
-
-- **Usage Guide**: `USAGE_GUIDE.md`
-- **README**: `README.md`
-- **Amass Docs**: https://github.com/owasp-amass/amass
 
 ---
 
-**🎉 You're all set! Start with Method 1 (Claude Desktop) for the best experience.**
+## ✅ Success Indicators
+
+You'll know it's working when:
+- ✅ No "unknown tool" errors
+- ✅ Enumeration starts successfully
+- ✅ Scan status shows running/completed scans
+- ✅ List subdomains returns results
+- ✅ All 11 tools are recognized by Claude
+
+---
+
+## 📊 Full Tool List
+
+Now available in Claude:
+
+1. **amass_enumerate_domain** - Start subdomain enumeration
+2. **amass_list_subdomains** - List discovered subdomains
+3. **amass_scan_status** - Check scan progress
+4. **amass_engine_status** - Check engine health
+5. **amass_track_changes** 🆕 - Monitor infrastructure changes
+6. **amass_query_associations** 🆕 - Discover asset relationships
+7. **amass_generate_visualization** 🆕 - Create network graphs
+8. **amass_get_config** 🆕 - Retrieve configuration
+9. **amass_update_config** 🆕 - Modify settings
+10. **amass_add_api_key** 🆕 - Configure data sources
+11. **amass_list_data_sources** 🆕 - List available sources
+
+---
+
+## 🎉 You're Ready!
+
+Open Claude Desktop and start exploring. You now have full Amass capabilities through natural language.
+
+**Pro tip:** Start with basic enumeration, then explore advanced features like associations and visualizations once you have data.
+
+---
+
+**Need Help?**
+- Check TESTING_GUIDE.md for detailed test cases
+- See AMASS_TOOLS_REFERENCE.md for complete documentation
+- Review IMPLEMENTATION_SUMMARY.md for technical details
+
+**Last Updated**: 2025-12-21
